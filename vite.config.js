@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
 
   build: {
+    target: "esnext",
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
