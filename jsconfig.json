@@ -7,6 +7,12 @@
     "lib": ["DOM", "DOM.Iterable", "ES6"],
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
-    "downlevelIteration": true
-  }
+    "downlevelIteration": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "outFile": "router.ts"
+  },
+
+  "include": ["router.js", "./lib/*"]
 }
