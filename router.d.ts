@@ -1,25 +1,17 @@
 declare module "lib/task" {
     /**
      * @template Data
-     * @template Args
+     * @template {unknown[]} Args
      * @param {TaskFunction<Data, Args>} task
      * @param {Data} [initialData]
      * @returns {Task<Data, Args>}
      */
-    export function task<Data, Args>(task: TaskFunction<Data, Args>, initialData?: Data | undefined): Task<Data, Args>;
+    export function task<Data, Args extends unknown[]>(task: TaskFunction<Data, Args>, initialData?: Data | undefined): Task<Data, Args>;
     /**
-     * @template Data
-     * @template Args
+     * @template [Data=unknown]
+     * @template {unknown[]} [Args=unknown[]]
      */
-    export class Task<Data, Args> {
-        /**
-         * @template Data
-         * @param {Data | undefined} [data]
-         * @param {Error | undefined} [error]
-         * @param {boolean} [loading]
-         * @returns {TaskSnapshot<Data>}
-         */
-        static snapshot<Data_1>(data?: Data_1 | undefined, error?: Error | undefined, loading?: boolean | undefined): TaskSnapshot<Data_1>;
+    export class Task<Data = unknown, Args extends unknown[] = unknown[]> {
         /**
          * @param {TaskFunction<Data, Args>} task
          * @param {Data} [initialData]
@@ -32,13 +24,24 @@ declare module "lib/task" {
         /** @type {Error | undefined} */
         error: Error | undefined;
         /**
+         * @returns {TaskSnapshot<Data>}
+         */
+        snapshot(): TaskSnapshot<Data>;
+        invalidate(): void;
+        /**
+         * @param {Args} args
+         * @param {(task: TaskSnapshot<Data>) => void} [onChange]
+         * @returns {TaskSnapshot<Data>}
+         */
+        cache(args: Args, onChange?: ((task: TaskSnapshot<Data>) => void) | undefined): TaskSnapshot<Data>;
+        /**
          * @param {Args} args
          * @returns {Promise<TaskSnapshot<Data>>}
          */
-        run(args: Args): Promise<TaskSnapshot<Data>>;
+        run(...args: Args): Promise<TaskSnapshot<Data>>;
         #private;
     }
-    export type TaskFunction<Data, Args> = (args: Args) => Promise<Data>;
+    export type TaskFunction<Data, Args extends unknown[]> = (...args: Args) => Promise<Data>;
     export type TaskSnapshot<Data> = {
         loading: boolean;
         data: Data | undefined;
@@ -76,28 +79,32 @@ declare module "lib/route-group" {
          * @param {RoutesInit<Component, Data>} routesInit
          */
         constructor(routesInit?: RoutesInit<Component, Data>);
-        /** @type {import("./router").Router<Component>} */
-        router: import("router").Router<Component>;
-        /** @type {import("./route-group").RouteGroup<Component>} */
-        parent: import("lib/route-group").RouteGroup<Component>;
-        /** @type {URLPattern} */
-        pattern: URLPattern;
-        /** @type {Task<import("./router").Routable<Component>[], void> | undefined} */
-        lazy: Task<import("router").Routable<Component>[], void> | undefined;
-        /** @type {Task<Data, import("./router").LoadArgs> | undefined} */
-        load: Task<Data, import("router").LoadArgs> | undefined;
+        router: import("router").Router<Component, any>;
+        parent: RouteGroup<Component, any>;
         slot: string | undefined;
         path: string;
         fullPath: string;
         layout: Component | undefined;
         fallback: Component | undefined;
         routes: import("router").Routable<Component>[];
+        pattern: URLPattern;
+        load: Task<Data, [args: import("router").LoadArgs]> | undefined;
+        /** @type {Task<import("./router").Routable<Component>[], []> | undefined} */
+        lazy: Task<import("router").Routable<Component>[], []> | undefined;
+        /**
+         * @param {string} path
+         */
+        invalidate(path: string): void;
+        /**
+         * @param {string} pathname
+         */
+        test(pathname: string): boolean;
         /**
          * @param {string} pathname
          * @param {boolean} [withFallback]
          * @returns {import("./router").RouteNode<Component> | undefined}
          */
-        match(pathname: string, withFallback?: boolean | undefined): import("router").RouteNode<Component> | undefined;
+        resolve(pathname: string, withFallback?: boolean | undefined): import("router").RouteNode<Component> | undefined;
         /**
          * @param {string} pathname
          * @returns {import("./router").RouteNode<Component> | undefined}
@@ -113,15 +120,14 @@ declare module "lib/route-group" {
          */
         setParent(parent: RouteGroup<Component>): void;
         /**
-         * @returns {import("./task").TaskSnapshot<(import("./router").Routable<Component>)[]>}
+         * @returns {import("./task").TaskSnapshot<(import("./router").Routable<Component>)[]> | undefined}
          */
-        getRoutes(): import("router").TaskSnapshot<(import("router").Routable<Component>)[]>;
+        getRoutes(): import("router").TaskSnapshot<(import("router").Routable<Component>)[]> | undefined;
         /**
-         * @param {string} pathname
          * @param {import("./router").LoadArgs} args
-         * @returns {import("./task").TaskSnapshot<Data>}
+         * @returns {import("./task").TaskSnapshot<Data> | undefined}
          */
-        getData(pathname: string, args: import("router").LoadArgs): import("router").TaskSnapshot<Data>;
+        getData(args: import("router").LoadArgs): import("router").TaskSnapshot<Data> | undefined;
     }
     export type RoutesInit<Component, Data> = {
         router?: import("router").Router<Component, any> | undefined;
@@ -138,6 +144,24 @@ declare module "lib/route-group" {
 }
 declare module "lib/route" {
     /**
+     * @template [Data=unknown]
+     * @template {unknown[]} [Args=unknown[]]
+     * @typedef {ActionFunction<Data, Args> & ActionStatic<Data>} Action
+     */
+    /**
+     * @template [Data=unknown]
+     * @template {unknown[]} [Args=unknown[]]
+     * @typedef {(...args: Args) => Promise<Data>} ActionFunction
+     */
+    /**
+     * @template [Data=unknown]
+     * @typedef {Object} ActionStatic
+     * @property {boolean} loading
+     * @property {Data} [data]
+     * @property {Error} [error]
+     * @property {(e: SubmitEvent) => void} submit
+     */
+    /**
      * @template Component
      * @template Data
      * @typedef {Object} RouteInit
@@ -149,6 +173,7 @@ declare module "lib/route" {
      * @property {Component} [fallback]
      * @property {import("./router").Load<Data>} [load]
      * @property {import("./router").LazyPage<Component>} [lazy]
+     * @property {Record<string, ActionFunction>} [actions]
      */
     /**
      * @template Component
@@ -166,37 +191,55 @@ declare module "lib/route" {
          * @param {RouteInit<Component, Data>} routeInit
          */
         constructor(routeInit?: RouteInit<Component, Data>);
-        /** @type {import("./router").Router<Component>} */ router: import("router").Router<Component>;
-        /** @type {import("./route-group").RouteGroup<Component>} */ parent: import("router").RouteGroup<Component>;
-        /** @type {URLPattern} */ pattern: URLPattern;
+        router: import("router").Router<Component, any>;
+        parent: import("router").RouteGroup<Component, any>;
         path: string;
         slot: string | undefined;
         fullPath: string;
         page: NonNullable<Component> | undefined;
         fallback: Component | undefined;
-        load: Task<Data, import("router").LoadArgs> | undefined;
-        lazy: Task<Component, any> | undefined;
+        pattern: URLPattern;
+        load: Task<Data, [args: import("router").LoadArgs]> | undefined;
+        lazy: Task<Component, []> | undefined;
+        /** @type {Record<string, Action>} */
+        actions: Record<string, Action>;
+        /**
+         * @param {string} path
+         */
+        invalidate(path: string): void;
+        /**
+         * @param {string} pathname
+         */
+        test(pathname: string): boolean;
         /**
          *
          * @param {string} pathname
          * @returns {import("./router").RouteNode<Component> | undefined}
          */
-        match(pathname: string): import("router").RouteNode<Component> | undefined;
+        resolve(pathname: string): import("router").RouteNode<Component> | undefined;
         /**
          * @param {import("./route-group").RouteGroup<Component>} parent
          */
         setParent(parent: import("router").RouteGroup<Component>): void;
         /**
-         * @returns {import("./task").TaskSnapshot<Component>}
+         * @returns {import("./task").TaskSnapshot<Component> | undefined}
          */
-        getPage(): import("router").TaskSnapshot<Component>;
+        getPage(): import("router").TaskSnapshot<Component> | undefined;
         /**
-         * @param {string} pathname
          * @param {import("./router").LoadArgs} args
-         * @returns {import("./task").TaskSnapshot<Data>}
+         * @returns {import("./task").TaskSnapshot<Data> | undefined}
          */
-        getData(pathname: string, args: import("router").LoadArgs): import("router").TaskSnapshot<Data>;
+        getData(args: import("router").LoadArgs): import("router").TaskSnapshot<Data> | undefined;
+        getActions(): void;
     }
+    export type Action<Data = unknown, Args extends unknown[] = unknown[]> = ActionFunction<Data, Args> & ActionStatic<Data>;
+    export type ActionFunction<Data = unknown, Args extends unknown[] = unknown[]> = (...args: Args) => Promise<Data>;
+    export type ActionStatic<Data = unknown> = {
+        loading: boolean;
+        data?: Data | undefined;
+        error?: Error | undefined;
+        submit: (e: SubmitEvent) => void;
+    };
     export type RouteInit<Component, Data> = {
         router?: import("router").Router<Component, any> | undefined;
         parent?: import("router").RouteGroup<Component, any> | undefined;
@@ -206,6 +249,7 @@ declare module "lib/route" {
         fallback?: Component | undefined;
         load?: import("router").Load<Data> | undefined;
         lazy?: import("router").LazyPage<Component> | undefined;
+        actions?: Record<string, ActionFunction<unknown, unknown[]>> | undefined;
     };
     import { Task } from "lib/task";
 }
@@ -222,11 +266,6 @@ declare module "lib/router" {
      * @returns {Router<Component, Data>}
      */
     export function createRouter<Component, Data>(routerInit: RouterInit<Component, Data>): Router<Component, Data>;
-    /**
-     * @param {string} path
-     * @param {Record<string, unknown>} store
-     */
-    export function invalidate(path: string, store: Record<string, unknown>): void;
     /**
      * @param  {...string} parts
      * @returns {string}
@@ -280,15 +319,6 @@ declare module "lib/router" {
          */
         link: (anchor: HTMLAnchorElement) => void;
         /**
-         * @template Data
-         * @template Args
-         * @param {string} key
-         * @param {import("./task").Task<Data, Args>} task
-         * @param {Args} [args]
-         * @returns {import("./task").TaskSnapshot<Data>}
-         */
-        cache<Data_1, Args>(key: string, task: import("lib/task").Task<Data_1, Args>, args?: Args | undefined): import("router").TaskSnapshot<Data_1>;
-        /**
          * @param {string} path
          */
         invalidate(path: string): void;
@@ -327,7 +357,6 @@ declare module "lib/router" {
         searchParams: URLSearchParams;
     };
     import { RouteGroup } from "lib/route-group";
-    import { Task } from "lib/task";
     import { Route } from "lib/route";
 }
 declare module "router" {
