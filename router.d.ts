@@ -124,7 +124,7 @@ declare module "lib/route-group" {
         getData(pathname: string, args: import("router").LoadArgs): import("router").TaskSnapshot<Data>;
     }
     export type RoutesInit<Component, Data> = {
-        router?: import("router").Router<Component> | undefined;
+        router?: import("router").Router<Component, any> | undefined;
         parent?: RouteGroup<Component, any> | undefined;
         path?: string | undefined;
         slot?: string | undefined;
@@ -198,7 +198,7 @@ declare module "lib/route" {
         getData(pathname: string, args: import("router").LoadArgs): import("router").TaskSnapshot<Data>;
     }
     export type RouteInit<Component, Data> = {
-        router?: import("router").Router<Component> | undefined;
+        router?: import("router").Router<Component, any> | undefined;
         parent?: import("router").RouteGroup<Component, any> | undefined;
         path?: string | undefined;
         slot?: string | undefined;
@@ -212,17 +212,16 @@ declare module "lib/route" {
 declare module "lib/router" {
     /**
      * @template Component
-     * @typedef {Object} RouterInit
-     * @property {NestedRoutes<Component>} [routes]
-     * @property {Component} [fallback]
-     * @property {Component} [layout]
+     * @template Data
+     * @typedef {import("./route-group").RoutesInit<Component, Data>} RouterInit
      */
     /**
      * @template Component
-     * @param {RouterInit<Component>} routerInit
-     * @returns {Router<Component>}
+     * @template Data
+     * @param {RouterInit<Component, Data>} routerInit
+     * @returns {Router<Component, Data>}
      */
-    export function createRouter<Component>(routerInit: RouterInit<Component>): Router<Component>;
+    export function createRouter<Component, Data>(routerInit: RouterInit<Component, Data>): Router<Component, Data>;
     /**
      * @param {string} path
      * @param {Record<string, unknown>} store
@@ -242,12 +241,13 @@ declare module "lib/router" {
     export function normalize<Component>(routes: NestedRoutes<Component> | undefined, parent: RouteGroup<Component>): (Routable<Component>)[];
     /**
      * @template Component
+     * @template [Data=unknown]
      */
-    export class Router<Component> {
+    export class Router<Component, Data = unknown> {
         /**
-         * @param {RouterInit<Component>} routerInit
+         * @param {RouterInit<Component, Data>} routerInit
          */
-        constructor(routerInit: RouterInit<Component>);
+        constructor(routerInit: RouterInit<Component, Data>);
         /** @type {RouteGroup<Component>} */
         root: RouteGroup<Component>;
         /**
@@ -281,7 +281,7 @@ declare module "lib/router" {
          * @param {Args} [args]
          * @returns {import("./task").TaskSnapshot<Data>}
          */
-        cache<Data, Args>(key: string, task: import("lib/task").Task<Data, Args>, args?: Args | undefined): import("router").TaskSnapshot<Data>;
+        cache<Data_1, Args>(key: string, task: import("lib/task").Task<Data_1, Args>, args?: Args | undefined): import("router").TaskSnapshot<Data_1>;
         /**
          * @param {string} path
          */
@@ -291,11 +291,7 @@ declare module "lib/router" {
         requestUpdate: () => void;
         #private;
     }
-    export type RouterInit<Component> = {
-        routes?: NestedRoutes<Component> | undefined;
-        fallback?: Component | undefined;
-        layout?: Component | undefined;
-    };
+    export type RouterInit<Component, Data> = import("router").RoutesInit<Component, Data>;
     export type Params = Record<string, string>;
     export type LoadArgs = {
         params: Params;
@@ -314,13 +310,13 @@ declare module "lib/router" {
     export type RouteNode<Component, Data = unknown> = {
         hash: string;
         path: string;
-        page?: Component;
-        layout?: Component;
-        children?: RouteNode<Component> | undefined;
-        slots?: Record<string, RouteNode<Component>>;
-        data: Data | undefined;
+        page?: Component | undefined;
+        layout?: Component | undefined;
+        children?: RouteNode<Component, unknown> | undefined;
+        slots?: Record<string, RouteNode<Component, unknown>> | undefined;
         loading: boolean;
-        error: Error | undefined;
+        data?: Data | undefined;
+        error?: Error | undefined;
         params: Params;
         searchParams: URLSearchParams;
     };
