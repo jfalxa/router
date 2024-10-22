@@ -240,6 +240,12 @@ declare module "lib/router" {
      */
     export function normalize<Component>(routes: NestedRoutes<Component> | undefined, parent: RouteGroup<Component>): (Routable<Component>)[];
     /**
+     * @param {string} previousPath
+     * @param {string} nextPath
+     * @returns {string | undefined}
+     */
+    export function exitedPath(previousPath: string, nextPath: string): string | undefined;
+    /**
      * @template Component
      * @template [Data=unknown]
      */
