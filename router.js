@@ -4,6 +4,6 @@ if (!globalThis.URLPattern) {
 }
 
 export * from "./lib/router";
-export * from "./lib/routes";
+export * from "./lib/route-group";
 export * from "./lib/route";
 export * from "./lib/task";
