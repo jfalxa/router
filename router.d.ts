@@ -13,6 +13,19 @@ declare module "lib/task" {
      */
     export class Task<Args extends unknown[] = unknown[], Data = unknown> {
         /**
+         * @param {unknown} data
+         */
+        static key(data: unknown): string;
+        /**
+         * @template Data
+         * @param {Data} data
+         */
+        static snapshot<Data_1>(data: Data_1): {
+            data: Data_1;
+            loading: boolean;
+            error: undefined;
+        };
+        /**
          * @param {TaskFunction<Args, Data>} task
          * @param {Data} [initialData]
          */
@@ -118,6 +131,31 @@ declare module "lib/route-group" {
     export type RouteGroupInit<Component, Data, Actions extends import("router").Actions> = import("lib/routable").RoutableInit<Component, Data, Actions> & _RouteGroupInit<Component, Data, Actions>;
     import { Routable } from "lib/routable";
     import { Task } from "lib/task";
+}
+declare module "lib/utils" {
+    /**
+     * @param  {...string} parts
+     * @returns {string}
+     */
+    export function join(...parts: string[]): string;
+    /**
+     * @template Component
+     * @param {import("./router").NestedRoutes<Component> | undefined} routes
+     * @param {import("./route-group").RouteGroup<Component>} parent
+     * @returns {(import("./router").Routable<Component>)[]}
+     */
+    export function normalize<Component>(routes: import("router").NestedRoutes<Component> | undefined, parent: import("router").RouteGroup<Component>): (import("router").Routable<Component>)[];
+    /**
+     * @param {string} path
+     * @returns {RegExp}
+     */
+    export function compileInvalidatePattern(path: string): RegExp;
+    /**
+     * @param {string} previousPath
+     * @param {string} nextPath
+     * @returns {string | undefined}
+     */
+    export function exitedPath(previousPath: string, nextPath: string): string | undefined;
 }
 declare module "lib/routable" {
     /**
@@ -255,29 +293,6 @@ declare module "lib/router" {
      * @returns {Router<Component, Data, RouterActions>}
      */
     export function createRouter<Component, Data, RouterActions extends Actions>(routerInit: RouterInit<Component, Data, RouterActions>): Router<Component, Data, RouterActions>;
-    /**
-     * @param  {...string} parts
-     * @returns {string}
-     */
-    export function join(...parts: string[]): string;
-    /**
-     * @template Component
-     * @param {NestedRoutes<Component> | undefined} routes
-     * @param {RouteGroup<Component>} parent
-     * @returns {(Routable<Component>)[]}
-     */
-    export function normalize<Component>(routes: NestedRoutes<Component> | undefined, parent: RouteGroup<Component>): (Routable<Component>)[];
-    /**
-     * @param {string} path
-     * @returns {RegExp}
-     */
-    export function compileInvalidatePattern(path: string): RegExp;
-    /**
-     * @param {string} previousPath
-     * @param {string} nextPath
-     * @returns {string | undefined}
-     */
-    export function exitedPath(previousPath: string, nextPath: string): string | undefined;
     /**
      * @template Data
      * @param {Action<[FormData, Data?], Data>} action
